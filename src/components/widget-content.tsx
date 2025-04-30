@@ -1,13 +1,26 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import React, { useState, useEffect } from "react";
 
-// Placeholder for your summarization logic
+// Define a type for project ideas
+interface ProjectIdea {
+  id: string;
+  text: string;
+  timestamp: number;
+  projectId?: string; // Optional associated project
+  source?: string; // Optional source description
+}
+
+// Key for localStorage
+const PROJECT_IDEAS_STORAGE_KEY = "projectIdeas";
+
+// Placeholder for summarization logic
 async function summarizeText(text: string): Promise<string> {
   console.log("Summarizing:", text);
-  // Replace with actual API call or local processing
-  await new Promise((resolve) => setTimeout(resolve, 500)); // Simulate async work
+  await new Promise((resolve) => setTimeout(resolve, 100));
   return `Summary for: "${text.substring(0, 30)}${
     text.length > 30 ? "..." : ""
   }"`;
@@ -17,18 +30,61 @@ export function WidgetContent() {
   const [selectedText, setSelectedText] = useState<string>("");
   const [summary, setSummary] = useState<string>("");
   const [isSummarizing, setIsSummarizing] = useState<boolean>(false);
+  const [projectIdeas, setProjectIdeas] = useState<ProjectIdea[]>([]);
+  const [newIdeaText, setNewIdeaText] = useState<string>("");
+  const [activeTab, setActiveTab] = useState<string>("insights");
+  const [currentProjectId, setCurrentProjectId] = useState<string | undefined>(
+    undefined
+  );
 
+  // Load ideas from localStorage on mount
+  useEffect(() => {
+    const storedIdeas = localStorage.getItem(PROJECT_IDEAS_STORAGE_KEY);
+    if (storedIdeas) {
+      try {
+        setProjectIdeas(JSON.parse(storedIdeas));
+      } catch (error) {
+        console.error(
+          "Failed to parse project ideas from localStorage:",
+          error
+        );
+        setProjectIdeas([]);
+      }
+    }
+  }, []);
+
+  // Save ideas to localStorage whenever they change
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem(
+        PROJECT_IDEAS_STORAGE_KEY,
+        JSON.stringify(projectIdeas)
+      );
+    }
+  }, [projectIdeas]);
+
+  // Listen for messages from parent window about current project
+  useEffect(() => {
+    const handleProjectSelection = (event: MessageEvent) => {
+      if (event.data && event.data.type === "current-project-changed") {
+        setCurrentProjectId(event.data.projectId);
+      }
+    };
+
+    window.addEventListener("message", handleProjectSelection);
+    return () => window.removeEventListener("message", handleProjectSelection);
+  }, []);
+
+  // Handle messages (e.g., from PiP text selection)
   useEffect(() => {
     const handleMessage = async (event: MessageEvent) => {
-      // Optional: Add origin check for security
-      // if (event.origin !== window.location.origin) return;
       console.log("Received message:", event.data);
 
       if (event.data && event.data.type === "text-selection") {
         const newText = event.data.text;
         console.log("PiP received text:", newText);
         setSelectedText(newText);
-        setSummary(""); // Clear previous summary
+        setSummary("");
         setIsSummarizing(true);
         try {
           const result = await summarizeText(newText);
@@ -42,53 +98,185 @@ export function WidgetContent() {
       }
     };
 
-    // Add listener when component mounts (in PiP window context)
     window.addEventListener("message", handleMessage);
-
-    // Cleanup listener when component unmounts
     return () => {
       window.removeEventListener("message", handleMessage);
     };
-  }, []); // Empty dependency array ensures this runs once on mount
+  }, []);
+
+  const handleAddIdea = (text?: string) => {
+    const ideaText = text || newIdeaText;
+    if (ideaText.trim() === "") return;
+
+    const newIdea: ProjectIdea = {
+      id: crypto.randomUUID(),
+      text: ideaText.trim(),
+      timestamp: Date.now(),
+      projectId: currentProjectId, // Associate with current project if available
+    };
+
+    setProjectIdeas((prevIdeas) => [...prevIdeas, newIdea]);
+    setNewIdeaText("");
+  };
+
+  const handleDeleteIdea = (idToDelete: string) => {
+    setProjectIdeas((prevIdeas) =>
+      prevIdeas.filter((idea) => idea.id !== idToDelete)
+    );
+  };
+
+  const saveSelectionAsIdea = () => {
+    if (selectedText) {
+      handleAddIdea(selectedText);
+      setActiveTab("ideas"); // Switch to ideas tab after saving
+    }
+  };
+
+  // Filter ideas by project or show all if no project is selected
+  const filteredIdeas = projectIdeas.filter(
+    (idea) =>
+      !currentProjectId ||
+      !idea.projectId ||
+      idea.projectId === currentProjectId
+  );
+
+  // Format date for display
+  const formatDate = (timestamp: number): string => {
+    return new Date(timestamp).toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  };
 
   return (
-    <div className="space-y-4">
-      {/* Display received text and summary */}
-      {selectedText && (
-        <div className="p-3 border rounded bg-secondary/50">
-          <p className="text-xs font-medium text-muted-foreground">Received:</p>
-          <p className="text-sm italic">"{selectedText}"</p>
-        </div>
-      )}
-      {isSummarizing && (
-        <p className="text-sm text-muted-foreground">Summarizing...</p>
-      )}
-      {summary && (
-        <div className="p-3 border rounded bg-primary/10">
-          <p className="text-xs font-medium text-muted-foreground">Summary:</p>
-          <p className="text-sm">{summary}</p>
-        </div>
-      )}
+    <Tabs
+      defaultValue="insights"
+      className="w-full p-1"
+      value={activeTab}
+      onValueChange={setActiveTab}
+    >
+      <TabsList className="grid w-full grid-cols-2">
+        <TabsTrigger value="insights">Insights</TabsTrigger>
+        <TabsTrigger value="ideas">Project Ideas</TabsTrigger>
+      </TabsList>
 
-      {/* Keep original widget content if needed */}
-      {!selectedText && !summary && !isSummarizing && (
-        <>
-          <p className="text-sm text-muted-foreground">
+      {/* Insights Tab */}
+      <TabsContent value="insights" className="space-y-3 pt-3">
+        {selectedText && (
+          <div className="p-2 border rounded bg-secondary/50 text-xs">
+            <p className="font-medium text-muted-foreground">Received:</p>
+            <p className="italic">"{selectedText}"</p>
+
+            {/* Add button to save selection as project idea */}
+            <div className="mt-2 flex justify-end">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs h-6 px-2"
+                onClick={saveSelectionAsIdea}
+              >
+                Save as Project Idea
+              </Button>
+            </div>
+          </div>
+        )}
+        {isSummarizing && (
+          <p className="text-xs text-muted-foreground">Summarizing...</p>
+        )}
+        {summary && (
+          <div className="p-2 border rounded bg-primary/10 text-xs">
+            <p className="font-medium text-muted-foreground">Summary:</p>
+            <p>{summary}</p>
+          </div>
+        )}
+
+        {!selectedText && !summary && !isSummarizing && (
+          <p className="text-xs text-muted-foreground text-center pt-2">
             Select text on the main page to see insights here.
           </p>
-          <div className="flex flex-col gap-2">
-            <Button size="sm" variant="default" className="w-full">
-              Dashboard
-            </Button>
-            <Button size="sm" variant="outline" className="w-full">
-              Settings
-            </Button>
-            <Button size="sm" variant="secondary" className="w-full">
-              Help Center
-            </Button>
+        )}
+      </TabsContent>
+
+      {/* Project Ideas Tab */}
+      <TabsContent value="ideas" className="space-y-3 pt-3">
+        {/* Project context indicator */}
+        {currentProjectId && (
+          <div className="p-1.5 bg-muted rounded-sm text-xs text-center mb-2">
+            Ideas for current project
           </div>
-        </>
-      )}
-    </div>
+        )}
+
+        <div className="flex w-full items-center space-x-1.5">
+          <Input
+            type="text"
+            placeholder="Add a new project idea..."
+            value={newIdeaText}
+            onChange={(e) => setNewIdeaText(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleAddIdea()}
+            className="h-8 text-xs"
+          />
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => handleAddIdea()}
+            className="h-8 px-2.5"
+          >
+            Add
+          </Button>
+        </div>
+
+        {filteredIdeas.length > 0 ? (
+          <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+            {filteredIdeas
+              .sort((a, b) => b.timestamp - a.timestamp)
+              .map((idea) => (
+                <div
+                  key={idea.id}
+                  className="flex flex-col p-1.5 border rounded bg-background text-xs"
+                >
+                  <div className="flex items-start justify-between">
+                    <span className="flex-grow pr-1">{idea.text}</span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-5 w-5 flex-shrink-0 text-muted-foreground hover:text-destructive"
+                      onClick={() => handleDeleteIdea(idea.id)}
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M18 6 6 18" />
+                        <path d="m6 6 12 12" />
+                      </svg>
+                    </Button>
+                  </div>
+                  <div className="text-[10px] text-muted-foreground mt-1 flex justify-between">
+                    <span>{formatDate(idea.timestamp)}</span>
+                    {idea.projectId && (
+                      <span className="italic">Project note</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground text-center pt-3">
+            {currentProjectId
+              ? "No project ideas saved for this project yet."
+              : "No project ideas saved yet."}
+          </p>
+        )}
+      </TabsContent>
+    </Tabs>
   );
 }
