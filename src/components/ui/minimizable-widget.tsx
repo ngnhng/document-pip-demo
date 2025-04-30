@@ -16,9 +16,8 @@ export function MinimizableWidget({
   children,
   className,
 }: MinimizableWidgetProps) {
-  const { widgetState, toggleMinimized, updatePosition, setIsDragging } =
-    useWidget();
-  const { isMinimized, position, isDragging } = widgetState;
+  const { widgetState, toggleMinimized } = useWidget();
+  const { isMinimized, position } = widgetState;
 
   // Client-side only component to avoid hydration issues
   const [mounted, setMounted] = useState(false);
@@ -27,37 +26,23 @@ export function MinimizableWidget({
     setMounted(true);
   }, []);
 
-  const { attributes, listeners, setNodeRef, transform } = useDraggable({
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: "widget-draggable",
     data: {
       type: "widget",
     },
   });
 
-  useEffect(() => {
-    const handleDragStart = () => setIsDragging(true);
-    const handleDragEnd = () => setIsDragging(false);
-    window.addEventListener("mousedown", handleDragStart);
-    window.addEventListener("mouseup", handleDragEnd);
-    window.addEventListener("touchstart", handleDragStart);
-    window.addEventListener("touchend", handleDragEnd);
-
-    return () => {
-      window.removeEventListener("mousedown", handleDragStart);
-      window.removeEventListener("mouseup", handleDragEnd);
-      window.removeEventListener("touchstart", handleDragStart);
-      window.removeEventListener("touchend", handleDragEnd);
-    };
-  }, []);
-
   if (!mounted) return null;
 
-  // Apply transform during dragging without updating position state
+  // Apply transform directly from useDraggable when dragging
+  // The final position is set by left/top, updated onDragEnd in the provider
   const style = {
-    transform:
-      isDragging && transform ? CSS.Translate.toString(transform) : undefined,
+    transform: transform ? CSS.Translate.toString(transform) : undefined,
     left: `${position.x}px`,
     top: `${position.y}px`,
+    // Hint browser for optimization during drag
+    willChange: isDragging ? 'transform' : 'auto',
   };
 
   return (
@@ -65,7 +50,9 @@ export function MinimizableWidget({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "fixed z-50 transition-all duration-200 ease-in-out shadow-lg",
+        "fixed z-50 shadow-lg",
+        // Apply transition only when not dragging
+        !isDragging && "transition-all duration-200 ease-in-out",
         isMinimized
           ? "w-12 h-12 rounded-full bg-primary text-primary-foreground"
           : "w-80 bg-card text-card-foreground border rounded-lg",
@@ -99,6 +86,8 @@ export function MinimizableWidget({
                 <Minimize2 size={16} />
               </button>
               <button
+                // Assuming the close button should also minimize for now
+                // TODO: Implement actual close functionality if needed
                 onClick={toggleMinimized}
                 className="p-1 rounded-sm hover:bg-accent"
                 aria-label="Close widget"
