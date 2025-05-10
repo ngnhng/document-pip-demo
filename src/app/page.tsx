@@ -22,6 +22,7 @@ import {
   SidebarMenuSubButton,
 } from "@/components/ui/sidebar";
 import { Folder, FileText } from "lucide-react";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 
 // Define types for folders and files
 type ProjectItemType = "folder" | "file";
@@ -309,12 +310,15 @@ export default function Home() {
                 priority
               />
             </div>
-            <Link
-              className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm h-8 px-3"
-              href="/about"
-            >
-              Go to About Page
-            </Link>
+            <div className="flex items-center gap-2">
+              <ThemeToggle />
+              <Link
+                className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm h-8 px-3"
+                href="/about"
+              >
+                Go to About Page
+              </Link>
+            </div>
           </header>
 
           <main className="flex-grow p-6">
