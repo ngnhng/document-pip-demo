@@ -52,7 +52,6 @@ export function PictureInPictureWidget({
 
   // Check if Document PiP API is supported
   useEffect(() => {
-    // @ts-ignore - documentPictureInPicture might not be in default TS types yet
     setPipSupported(!!window.documentPictureInPicture);
   }, []);
 
@@ -66,12 +65,15 @@ export function PictureInPictureWidget({
 
     try {
       // Request the PiP window
-      // @ts-ignore
       const requestedPipWindow =
-        await window.documentPictureInPicture.requestWindow({
+        await window.documentPictureInPicture?.requestWindow({
           width: 320, // Initial width (adjust as needed)
           height: 480, // Initial height (adjust as needed)
         });
+
+      if (!requestedPipWindow) {
+        throw new Error("Failed to open Picture-in-Picture window");
+      }
 
       // Create a root element in the PiP window
       pipRootRef.current = requestedPipWindow.document.createElement("div");
