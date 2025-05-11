@@ -45,6 +45,9 @@ export function WidgetContent() {
   const [isCloseButtonHovered, setIsCloseButtonHovered] =
     useState<boolean>(false);
 
+  // Set extra class when in PiP mode to apply special styling
+  const pipModeClass = isPictureInPicture ? "pip-mode" : "";
+
   // Load ideas from localStorage on mount
   useEffect(() => {
     const storedIdeas = localStorage.getItem(PROJECT_IDEAS_STORAGE_KEY);
@@ -176,28 +179,31 @@ export function WidgetContent() {
   };
 
   return (
-    <div className="w-full">
-      {/* PiP Exit Button - Only show when in PiP mode and hovered, uses no space when not hovered */}
+    <div className={`w-full ${pipModeClass}`}>
+      {/* PiP Exit Button - Always visible when in PiP mode */}
       {isPictureInPicture && (
-        <div
-          className="relative w-full"
-          onMouseEnter={() => setIsCloseButtonHovered(true)}
-          onMouseLeave={() => setIsCloseButtonHovered(false)}
-          style={{
-            height: isCloseButtonHovered ? "1.5rem" : 0,
-            marginBottom: isCloseButtonHovered ? "0.5rem" : 0,
-            transition: "height 0.2s, margin-bottom 0.2s",
-          }}
-        >
+        <div className="relative w-full flex justify-end mb-2">
           <Button
             size="sm"
-            variant="ghost"
+            variant="outline"
             onClick={togglePictureInPicture}
-            className={`w-full absolute top-0 left-0 transition-opacity duration-200 ${
-              isCloseButtonHovered ? "opacity-100" : "opacity-0"
-            }`}
+            className="h-7 w-7 p-0 rounded-full"
+            aria-label="Close PiP Window"
           >
-            Close PiP Window
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
           </Button>
         </div>
       )}

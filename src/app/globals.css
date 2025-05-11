@@ -120,3 +120,48 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* PiP Widget specific styles */
+.pip-mode {
+  /* Ensure card elements have proper dark theming in PiP mode */
+  --pip-background: var(--background);
+  --pip-foreground: var(--foreground);
+}
+
+/* Dark theme overrides for PiP window */
+.dark .pip-mode,
+.dark#root .pip-mode {
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+/* Make PiP window content components inherit dark theme */
+.pip-mode .bg-background {
+  background-color: var(--background);
+}
+
+.pip-mode .text-foreground {
+  color: var(--foreground);
+}
+
+.pip-mode .border {
+  border-color: var(--border);
+}
+
+.pip-mode .bg-secondary\/50 {
+  background-color: var(--secondary);
+  opacity: 0.5;
+}
+
+.pip-mode .bg-primary\/10 {
+  background-color: var(--primary);
+  opacity: 0.1;
+}
+
+.pip-mode .bg-muted {
+  background-color: var(--muted);
+}
+
+.pip-mode .text-muted-foreground {
+  color: var(--muted-foreground);
+}

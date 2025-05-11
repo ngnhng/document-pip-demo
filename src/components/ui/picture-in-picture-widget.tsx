@@ -31,13 +31,32 @@ const copyStyles = (sourceDoc: Document, targetDoc: Document) => {
       console.warn("Could not copy stylesheet:", styleSheet.href, e);
     }
   });
-  // Add basic styling for the PiP window body
+  
+  // Check if the current document has dark mode
+  const isDarkMode = sourceDoc.documentElement.classList.contains("dark");
+  
+  // Add basic styling for the PiP window body with theme-aware colors
   const bodyStyle = targetDoc.createElement("style");
   bodyStyle.textContent = `
-     body { margin: 0; padding: 0; background-color: #f0f0f0; }
-     #root { padding: 1rem; } /* Add padding to the root container */
+     body { 
+       margin: 0; 
+       padding: 0; 
+       background-color: var(--background, ${isDarkMode ? "#111" : "#f0f0f0"}); 
+       color: var(--foreground, ${isDarkMode ? "#fff" : "#000"});
+     }
+     #root { 
+       padding: 1rem; 
+       min-height: 100vh;
+       background-color: var(--background, ${isDarkMode ? "#111" : "#f0f0f0"}); 
+       color: var(--foreground, ${isDarkMode ? "#fff" : "#000"});
+     }
    `;
   targetDoc.head.appendChild(bodyStyle);
+  
+  // Apply dark mode class if needed
+  if (isDarkMode) {
+    targetDoc.documentElement.classList.add("dark");
+  }
 };
 
 export function PictureInPictureWidget({
